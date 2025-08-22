@@ -1,0 +1,96 @@
+Admin Access:
+
+Email: admin@glideon.com
+Password: admin123
+→ Redirects to admin panel with full management access
+Customer Access:
+
+Email: customer@glideon.com
+Password: customer123
+
+
+
+
+
+
+
+# Connect to your local PostgreSQL database
+psql -U your_username -d your_database_name -f database_setup.sql
+
+# Or if you need to create a database first:
+createdb glideon_ecommerce
+psql -U your_username -d glideon_ecommerce -f database_setup.sql
+
+
+
+
+
+
+
+
+Database Setup Instructions
+1. Save the Script:
+The script is now saved as database_setup.sql in your project root.
+
+2. Run on Local PostgreSQL:
+
+# Connect to your local PostgreSQL database
+psql -U your_username -d your_database_name -f database_setup.sql
+# Or if you need to create a database first:
+createdb glideon_ecommerce
+psql -U your_username -d glideon_ecommerce -f database_setup.sql
+3. What the Script Includes:
+
+Core Tables:
+
+users - User accounts with authentication
+categories - Product categories
+products - Product catalog with pricing
+addresses - User address book
+wishlist - User saved products
+orders & order_items - Complete order management
+cart_items - Shopping cart functionality
+reviews - Product reviews and ratings
+offers - Discount codes and promotions
+cms_content - Dynamic content management
+site_settings - Website configuration
+sessions - Authentication sessions
+Demo Data:
+
+Admin Account: admin@glideon.com / admin123
+Customer Account: customer@glideon.com / customer123
+4 Product Categories: Supplements, Equipment, Apparel, Nutrition
+Sample Products: Protein powder, resistance bands, t-shirts, pre-workout
+Active Offers: WELCOME10, SAVE20, FREESHIP
+Customer Data: Sample addresses, wishlist items, order history
+CMS Content: Homepage banners, About Us page content
+4. Environment Configuration:
+Make sure your local .env file has:
+
+DATABASE_URL=postgresql://username:password@localhost:5432/your_database_name
+JWT_SECRET=your-secure-jwt-secret-key
+5. Verify Installation:
+After running the script, you can verify with:
+
+-- Check tables created
+\dt
+-- Verify demo data
+SELECT email, role FROM users;
+SELECT name, price FROM products;
+SELECT code, discount_value FROM offers WHERE is_active = true;
+The script creates a complete e-commerce database with all the tables needed for:
+
+User authentication and profile management
+Product catalog and categories
+Shopping cart and checkout
+Order management and tracking
+Address book and wishlist
+Discount codes and promotions
+CMS content management
+Admin dashboard functionality
+All relationships are properly configured with foreign keys, indexes are added for performance, and the demo data lets you immediately test all features of the platform.
+
+
+
+
+

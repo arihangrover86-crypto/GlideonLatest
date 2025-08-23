@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+// JWT-only authentication for deployment
 import { ObjectStorageService } from "./objectStorage";
 import { insertCategorySchema, insertProductSchema, insertCartItemSchema, insertOrderSchema, insertOrderItemSchema, insertCmsContentSchema, insertReviewSchema } from "@shared/schema";
 import { z } from "zod";
@@ -45,8 +45,7 @@ const authenticateJWT = (req: any, res: any, next: any) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
+  // Using JWT authentication only
 
   // Initialize default content on first run
   try {
@@ -312,17 +311,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Legacy Replit auth route (keep for backward compatibility)
-  app.get('/api/auth/user-replit', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
+  // JWT Authentication routes only
+
 
   // Image upload route
   app.post('/api/upload/images', authenticateJWT, upload.array('images', 10), async (req: any, res) => {
@@ -776,21 +766,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/cms', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.user.claims.sub);
-      if (user?.role !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
 
-      const contentData = insertCmsContentSchema.parse(req.body);
-      const content = await storage.upsertCmsContent(contentData);
-      res.status(201).json(content);
-    } catch (error) {
-      console.error("Error updating CMS content:", error);
-      res.status(500).json({ message: "Failed to update CMS content" });
-    }
-  });
 
   // Review routes
   app.get('/api/reviews', async (req, res) => {
@@ -804,9 +780,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/reviews', isAuthenticated, async (req: any, res) => {
+  app.post('/api/reviews', authenticateJWT, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id; // Using JWT user format
       const reviewData = insertReviewSchema.parse({ ...req.body, userId });
       const review = await storage.createReview(reviewData);
       res.status(201).json(review);

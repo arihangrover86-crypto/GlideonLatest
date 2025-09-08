@@ -27,9 +27,10 @@ export default function CategorySection() {
   }
 
   const categoryImages = {
-    supplements: "https://pixabay.com/get/g543841e75ac23e7cfa178536e01fbff8bf2078ae5599d70eef9eed935a129c4eb2309381e486061855ed1ffb74712534cae2875a409e422bc31ae687feebce3c_1280.jpg",
-    equipment: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&h=600",
-    health: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&h=600"
+    supplements: "https://images.unsplash.com/photo-1593095948071-474c5cc2989d?w=800&h=600&fit=crop&auto=format",
+    equipment: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&h=600&fit=crop&auto=format",
+    apparel: "https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?w=800&h=600&fit=crop&auto=format",
+    nutrition: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&h=600&fit=crop&auto=format"
   };
 
   return (
@@ -49,13 +50,19 @@ export default function CategorySection() {
             categories.map((category) => (
               <div 
                 key={category.id}
-                className="group relative bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2"
-                data-testid={`category-${category.slug}`}
+                className="group onhover relative bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2"
+                data-testid={`category-${category.slug}`} onClick={() => {
+                  window.location.href = `/products?category=${category.slug}`;
+                }}
               >
                 <img 
                   src={category.imageUrl || categoryImages[category.slug as keyof typeof categoryImages] || categoryImages.supplements}
                   alt={category.name}
                   className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = categoryImages.supplements;
+                  }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                 <div className="absolute bottom-0 left-0 right-0 p-6 text-white">

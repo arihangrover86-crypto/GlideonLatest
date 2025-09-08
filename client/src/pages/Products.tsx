@@ -15,6 +15,7 @@ export default function Products() {
   const [location] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedFitnessLevel, setSelectedFitnessLevel] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("name");
 
   // Parse URL parameters
@@ -22,9 +23,11 @@ export default function Products() {
     const params = new URLSearchParams(window.location.search);
     const search = params.get("search");
     const category = params.get("category");
+    const fitnessLevel = params.get("fitnessLevel");
     
     if (search) setSearchQuery(search);
     if (category) setSelectedCategory(category);
+    if (fitnessLevel) setSelectedFitnessLevel(fitnessLevel);
   }, [location]);
 
   const { data: categories } = useQuery<Category[]>({
@@ -32,7 +35,7 @@ export default function Products() {
   });
 
   const { data: products, isLoading } = useQuery<Product[]>({
-    queryKey: ["/api/products", selectedCategory, searchQuery],
+    queryKey: ["/api/products", selectedCategory, selectedFitnessLevel, searchQuery],
     queryFn: async () => {
       let url = "/api/products";
       const params = new URLSearchParams();
@@ -42,13 +45,26 @@ export default function Products() {
         if (category) params.append("categoryId", category.id);
       }
       
+      if (selectedFitnessLevel && selectedFitnessLevel !== "all") {
+        params.append("fitnessLevel", selectedFitnessLevel);
+      }
+      
       if (params.toString()) {
         url += `?${params.toString()}`;
       }
       
-      const response = await fetch(url);
+      console.log("Products page - Fetching with URL:", url);
+      
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(url, { headers });
       if (!response.ok) throw new Error("Failed to fetch products");
       let data = await response.json();
+      console.log("Products page - Received:", data.length, "products");
       
       // Client-side search filtering
       if (searchQuery) {
@@ -79,7 +95,8 @@ export default function Products() {
     e.preventDefault();
     const params = new URLSearchParams();
     if (searchQuery) params.set("search", searchQuery);
-    if (selectedCategory) params.set("category", selectedCategory);
+    if (selectedCategory && selectedCategory !== "all") params.set("category", selectedCategory);
+    if (selectedFitnessLevel && selectedFitnessLevel !== "all") params.set("fitnessLevel", selectedFitnessLevel);
     
     const newUrl = params.toString() ? `/products?${params.toString()}` : "/products";
     window.history.pushState({}, "", newUrl);
@@ -87,7 +104,8 @@ export default function Products() {
 
   const clearFilters = () => {
     setSearchQuery("");
-    setSelectedCategory("");
+    setSelectedCategory("all");
+    setSelectedFitnessLevel("all");
     setSortBy("name");
     window.history.pushState({}, "", "/products");
   };
@@ -109,7 +127,7 @@ export default function Products() {
 
         {/* Filters */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {/* Search */}
             <form onSubmit={handleSearch} className="relative">
               <Input
@@ -143,6 +161,21 @@ export default function Products() {
                     {category.name}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+
+            {/* Fitness Level Filter */}
+            <Select value={selectedFitnessLevel} onValueChange={setSelectedFitnessLevel}>
+              <SelectTrigger data-testid="fitness-level-filter">
+                <SelectValue placeholder="All Fitness Levels" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Fitness Levels</SelectItem>
+                <SelectItem value="beginner">Beginner</SelectItem>
+                <SelectItem value="intermediate">Intermediate</SelectItem>
+                <SelectItem value="advanced">Advanced</SelectItem>
+                <SelectItem value="professional">Professional</SelectItem>
+                <SelectItem value="none">No Specific Level</SelectItem>
               </SelectContent>
             </Select>
 

@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Star, TrendingUp, Award, Target } from "lucide-react";
+import { Link } from "wouter";
 
 const fitnessLevels = [
   {
@@ -101,13 +102,14 @@ export default function ShopByLevelSection() {
                   </div>
 
                   {/* CTA Button */}
-                  <Button 
-                    className={`${level.color} hover:opacity-90 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 w-full mt-auto`}
-                    onClick={() => window.location.href = `/products?level=${level.level.toLowerCase()}`}
-                    data-testid={`level-button-${level.level.toLowerCase()}`}
-                  >
-                    {level.buttonText}
-                  </Button>
+                  <Link href={`/products?fitnessLevel=${level.level.toLowerCase()}`}>
+                    <Button 
+                      className={`${level.color} hover:opacity-90 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 w-full mt-auto`}
+                      data-testid={`level-button-${level.level.toLowerCase()}`}
+                    >
+                      {level.buttonText}
+                    </Button>
+                  </Link>
                 </CardContent>
               </Card>
             );

@@ -65,6 +65,16 @@ export default function Header() {
     
     try {
       const parsed = JSON.parse(logoData.value || '{}');
+      
+      // Convert Google Cloud Storage URLs to local object URLs
+      if (parsed.logoUrl && parsed.logoUrl.includes('storage.googleapis.com')) {
+        // Extract the file path from the Google Cloud Storage URL
+        const matches = parsed.logoUrl.match(/\.private\/uploads\/([^?]+)/);
+        if (matches) {
+          parsed.logoUrl = `/objects/uploads/${matches[1]}`;
+        }
+      }
+      
       return { ...defaultLogo, ...parsed };
     } catch (error) {
       console.error('Error parsing logo settings:', error);
@@ -91,13 +101,27 @@ export default function Header() {
               {logoSettings.logoUrl ? (
                 <img 
                   src={logoSettings.logoUrl} 
-                  alt={logoSettings.brandName} 
+                  alt={logoSettings.brandName || "GLIDEON"} 
                   className="h-8 w-auto max-w-[200px] object-contain" 
                   data-testid="logo-image"
+                  onError={(e) => {
+                    console.error('Logo failed to load:', logoSettings.logoUrl);
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    // Show brand name fallback
+                    const parent = target.parentElement;
+                    if (parent) {
+                      const fallback = document.createElement('span');
+                      fallback.textContent = logoSettings.brandName || "GLIDEON";
+                      fallback.className = "text-2xl font-bold text-glideon-red tracking-wider";
+                      fallback.setAttribute('data-testid', 'logo-text-fallback');
+                      parent.appendChild(fallback);
+                    }
+                  }}
                 />
               ) : (
                 <span className="text-2xl font-bold text-glideon-red tracking-wider" data-testid="logo-text">
-                  {logoSettings.brandName}
+                  {logoSettings.brandName || "GLIDEON"}
                 </span>
               )}
             </Link>
@@ -122,7 +146,7 @@ export default function Header() {
                 <DropdownMenuTrigger asChild>
                   <Button 
                     variant="ghost" 
-                    className="text-gray-700 dark:text-gray-300 hover:text-glideon-red dark:hover:text-glideon-red transition-colors duration-200 p-0 h-auto font-normal"
+                    className="fnt15 text-gray-700 :text-gray-300 hover:text-glideon-red :hover:text-glideon-red transition-colors duration-200 p-0 h-auto font-normal"
                     data-testid="nav-categories-dropdown"
                   >
                     Categories <ChevronDown className="ml-1 h-4 w-4" />
@@ -210,7 +234,7 @@ export default function Header() {
             {isAuthenticated ? (
               <div className="flex items-center space-x-2">
                 <Link href="/profile">
-                  <Button variant="ghost" size="sm" className="flex items-center space-x-2 hover:text-glideon-red" data-testid="user-profile">
+                  <Button variant="ghost" size="sm" className="fnt15 flex items-center space-x-2 hover:text-glideon-red" data-testid="user-profile">
                     <User className="h-5 w-5" />
                     <span className="hidden md:block">
                       {user?.firstName || "Profile"}
@@ -219,7 +243,7 @@ export default function Header() {
                 </Link>
                 {user?.role === 'admin' && (
                   <Link href="/admin">
-                    <Button variant="ghost" size="sm" className="hidden md:block hover:text-glideon-red" data-testid="admin-panel">
+                    <Button variant="ghost" size="sm" className="fnt15 hidden md:block hover:text-glideon-red" data-testid="admin-panel">
                       Admin
                     </Button>
                   </Link>
@@ -231,7 +255,7 @@ export default function Header() {
                     localStorage.removeItem('authToken');
                     window.location.href = "/";
                   }}
-                  className="hidden md:block hover:text-glideon-red"
+                  className="fnt15 hidden md:block hover:text-glideon-red"
                   data-testid="logout-button"
                 >
                   Logout
@@ -243,17 +267,17 @@ export default function Header() {
                   variant="ghost"
                   size="sm"
                   onClick={() => navigate("/login")}
-                  className="flex items-center space-x-2 hover:text-glideon-red"
+                  className="fnt13 flex items-center space-x-2 hover:text-glideon-red"
                   data-testid="login-button"
                 >
                   <User className="h-5 w-5" />
-                  <span className="hidden md:block">Sign In</span>
+                  <span className="fnt15 hidden md:block">Sign In</span>
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => navigate("/register")}
-                  className="hidden md:block border-glideon-red text-glideon-red hover:bg-glideon-red hover:text-white"
+                  className="hidden md:block bgnone border-glideon-red text-glideon-red hover:  hover:text-white"
                   data-testid="register-button"
                 >
                   Sign Up
@@ -274,7 +298,7 @@ export default function Header() {
                     <Link
                       key={item.href}
                       href={item.href}
-                      className="block px-3 py-2 text-gray-700 dark:text-gray-300 hover:text-glideon-red hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors duration-200"
+                      className=" fnt15 block px-3 py-2 text-gray-700 dark:text-gray-300 hover:text-glideon-red hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors duration-200"
                       data-testid={`mobile-nav-${item.label.toLowerCase().replace(' ', '-')}`}
                     >
                       {item.label}

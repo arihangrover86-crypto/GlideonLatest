@@ -34,6 +34,7 @@ export default function AddProduct() {
     price: "",
     salePrice: "",
     categoryId: "",
+    fitnessLevel: "none",
     stock: "",
     isFeatured: false,
     featuredImage: "",
@@ -140,6 +141,7 @@ export default function AddProduct() {
       price: parseFloat(productForm.price),
       salePrice: productForm.salePrice ? parseFloat(productForm.salePrice) : null,
       categoryId: productForm.categoryId === 'none' ? null : productForm.categoryId || null,
+      fitnessLevel: productForm.fitnessLevel === 'none' ? null : productForm.fitnessLevel || null,
       stock: parseInt(productForm.stock) || 0,
       isFeatured: productForm.isFeatured,
       images: [productForm.featuredImage, ...productForm.images].filter(Boolean),
@@ -378,6 +380,26 @@ export default function AddProduct() {
                           {category.name}
                         </SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Fitness Level */}
+                <div className="space-y-2">
+                  <Label htmlFor="fitnessLevel">Fitness Level</Label>
+                  <Select 
+                    value={productForm.fitnessLevel} 
+                    onValueChange={(value) => setProductForm(prev => ({ ...prev, fitnessLevel: value }))}
+                  >
+                    <SelectTrigger data-testid="select-fitness-level">
+                      <SelectValue placeholder="Select fitness level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No Specific Level</SelectItem>
+                      <SelectItem value="beginner">Beginner</SelectItem>
+                      <SelectItem value="intermediate">Intermediate</SelectItem>
+                      <SelectItem value="advanced">Advanced</SelectItem>
+                      <SelectItem value="professional">Professional</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

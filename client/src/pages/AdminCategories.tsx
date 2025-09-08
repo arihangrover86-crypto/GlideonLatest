@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Edit, Trash2, ArrowLeft, Upload, X, Image as ImageIcon } from "lucide-react";
+import { Plus, Edit, Trash2, ArrowLeft, X, Upload, Image as ImageIcon } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -24,12 +25,14 @@ export default function AdminCategories() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
+
   // Form states
   const [categoryForm, setCategoryForm] = useState({
     name: "",
     slug: "",
     description: "",
     imageUrl: "",
+    isHighDemand: false,
   });
 
   // Check authorization
@@ -211,6 +214,7 @@ export default function AdminCategories() {
       slug: "",
       description: "",
       imageUrl: "",
+      isHighDemand: false,
     });
     setEditingCategory(null);
   };
@@ -273,6 +277,7 @@ export default function AdminCategories() {
       slug: category.slug,
       description: category.description || "",
       imageUrl: category.imageUrl || "",
+      isHighDemand: category.isHighDemand || false,
     });
     setIsCategoryDialogOpen(true);
   };
@@ -289,11 +294,32 @@ export default function AdminCategories() {
       return;
     }
 
+    // Check high demand limit
+    const highDemandCount = categories?.filter(cat => cat.isHighDemand).length || 0;
+    if (categoryForm.isHighDemand && !editingCategory && highDemandCount >= 2) {
+      toast({
+        title: "Limit Reached",
+        description: "Only 2 categories can be marked as high demand. Please remove one first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (categoryForm.isHighDemand && editingCategory && !editingCategory.isHighDemand && highDemandCount >= 2) {
+      toast({
+        title: "Limit Reached", 
+        description: "Only 2 categories can be marked as high demand. Please remove one first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const categoryData = {
       name: categoryForm.name,
       slug: categoryForm.slug,
       description: categoryForm.description,
       imageUrl: categoryForm.imageUrl,
+      isHighDemand: categoryForm.isHighDemand,
     };
 
     if (editingCategory) {
@@ -424,6 +450,9 @@ export default function AdminCategories() {
                               <Upload className="mr-2 h-4 w-4" />
                               {uploadingImage ? "Uploading..." : "Choose Image"}
                             </Button>
+                            <p className="text-xs text-gray-500 mt-2">
+                              Upload images directly to your server (works on all platforms)
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -447,6 +476,23 @@ export default function AdminCategories() {
                         </Button>
                       </div>
                     )}
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="isHighDemand"
+                      checked={categoryForm.isHighDemand}
+                      onChange={(e) => setCategoryForm(prev => ({ ...prev, isHighDemand: e.target.checked }))}
+                      className="h-4 w-4 text-glideon-red focus:ring-glideon-red border-gray-300 rounded"
+                      data-testid="checkbox-high-demand"
+                    />
+                    <Label htmlFor="isHighDemand" className="text-sm font-medium">
+                      Mark as High Demand 
+                      <span className="text-xs text-gray-500 block">
+                        (Max 2 categories can be high demand)
+                      </span>
+                    </Label>
                   </div>
 
                   <div className="flex justify-end space-x-2 pt-4">
@@ -495,6 +541,7 @@ export default function AdminCategories() {
                       <th className="text-left py-3 px-4">Name</th>
                       <th className="text-left py-3 px-4">Slug</th>
                       <th className="text-left py-3 px-4">Description</th>
+                      <th className="text-left py-3 px-4">High Demand</th>
                       <th className="text-left py-3 px-4">Products</th>
                       <th className="text-left py-3 px-4">Actions</th>
                     </tr>
@@ -527,6 +574,15 @@ export default function AdminCategories() {
                           <p className="text-sm text-gray-600 dark:text-gray-400 max-w-xs truncate">
                             {category.description || "No description"}
                           </p>
+                        </td>
+                        <td className="py-3 px-4">
+                          {category.isHighDemand ? (
+                            <Badge className="bg-glideon-red text-white">
+                              High Demand
+                            </Badge>
+                          ) : (
+                            <span className="text-sm text-gray-400">-</span>
+                          )}
                         </td>
                         <td className="py-3 px-4">
                           <span className="text-sm text-gray-600 dark:text-gray-400">

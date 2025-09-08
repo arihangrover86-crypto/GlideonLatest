@@ -2,7 +2,7 @@ import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
+// import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,24 +32,27 @@ import HelpCenter from "@/pages/HelpCenter";
 import ShippingInfo from "@/pages/ShippingInfo";
 import Returns from "@/pages/Returns";
 import TrackOrder from "@/pages/TrackOrder";
+import FitnessLevels from "@/pages/FitnessLevels";
 import Careers from "@/pages/Careers";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import Sitemap from "@/pages/Sitemap";
-
+import ScrollToTop from "./ScrollToTop";
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
   // Initialize theme system
   useTheme();
 
   return (
+    <ScrollToTop>
     <Switch>
+      
       <Route path="/landing" component={Landing} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/" component={Home} />
       <Route path="/products" component={Products} />
-      <Route path="/products/:slug" component={ProductDetail} />
+      <Route path="/products/:id" component={ProductDetail} />
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
       <Route path="/profile" component={Profile} />
@@ -68,12 +71,15 @@ function Router() {
       <Route path="/shipping-info" component={ShippingInfo} />
       <Route path="/returns" component={Returns} />
       <Route path="/track-order" component={TrackOrder} />
+      <Route path="/fitness-levels" component={FitnessLevels} />
       <Route path="/careers" component={Careers} />
       <Route path="/privacy-policy" component={PrivacyPolicy} />
       <Route path="/terms-of-service" component={TermsOfService} />
       <Route path="/sitemap" component={Sitemap} />
       <Route component={NotFound} />
+    
     </Switch>
+    </ScrollToTop>
   );
 }
 
@@ -82,10 +88,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <CartProvider>
-          <TooltipProvider>
+          <div>
             <Toaster />
             <Router />
-          </TooltipProvider>
+          </div>
         </CartProvider>
       </ThemeProvider>
     </QueryClientProvider>

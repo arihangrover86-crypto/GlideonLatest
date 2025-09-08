@@ -2,12 +2,15 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 // JWT-only authentication for deployment
-import { ObjectStorageService } from "./objectStorage";
-import { insertCategorySchema, insertProductSchema, insertCartItemSchema, insertOrderSchema, insertOrderItemSchema, insertCmsContentSchema, insertReviewSchema } from "@shared/schema";
+// Object storage removed - now using file system upload
+import { insertCategorySchema, insertProductSchema, insertProductVariantSchema, insertCartItemSchema, insertOrderSchema, insertOrderItemSchema, insertCmsContentSchema, insertReviewSchema } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import multer from "multer";
+import { promises as fs } from "fs";
+import path from "path";
+import { randomUUID } from "crypto";
 
 // Configure multer for memory storage
 const upload = multer({ storage: multer.memoryStorage() });
@@ -314,60 +317,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // JWT Authentication routes only
 
 
-  // Image upload route
+  // Image upload route - saves to GitHub repository for persistence
   app.post('/api/upload/images', authenticateJWT, upload.array('images', 10), async (req: any, res) => {
     try {
       if (req.user?.role !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
 
-      // For local development, return placeholder paths
-      if (!process.env.REPL_ID) {
-        console.log("Local development mode: Image upload disabled, returning placeholders");
-        const imagePaths = req.files?.map((file: any) => `/placeholder-images/${file.originalname}`) || [];
-        return res.json({ imagePaths });
-      }
-
       if (!req.files || req.files.length === 0) {
         return res.status(400).json({ message: "No images provided" });
       }
 
-      const objectStorageService = new ObjectStorageService();
+      // Save to client/public/uploads directory (part of GitHub repository)
+      const uploadsDir = path.join(process.cwd(), 'client', 'public', 'uploads');
+      try {
+        await fs.access(uploadsDir);
+      } catch (error) {
+        console.log('Creating uploads directory:', uploadsDir);
+        await fs.mkdir(uploadsDir, { recursive: true });
+      }
+
       const imagePaths: string[] = [];
 
       for (const file of req.files) {
-        const imagePath = await objectStorageService.uploadFile(file, 'products');
-        imagePaths.push(imagePath);
+        // Generate unique filename with timestamp for better organization
+        const timestamp = Date.now();
+        const fileExtension = path.extname(file.originalname);
+        const uniqueFilename = `${timestamp}-${randomUUID()}${fileExtension}`;
+        const filePath = path.join(uploadsDir, uniqueFilename);
+        
+        console.log('💾 Saving file to GitHub repository:', filePath);
+        // Save file to repository uploads directory
+        await fs.writeFile(filePath, file.buffer);
+        
+        // Verify file was saved
+        const stats = await fs.stat(filePath);
+        console.log(`✅ File saved successfully - ${stats.size} bytes`);
+        
+        // Return web-accessible path
+        const webPath = `/uploads/${uniqueFilename}`;
+        imagePaths.push(webPath);
       }
 
+      console.log('✅ Upload successful - files saved to GitHub repository:', imagePaths);
+      console.log('📁 Files will persist across all Render deployments');
       res.json({ imagePaths });
     } catch (error) {
       console.error("Error uploading images:", error);
-      res.status(500).json({ message: "Failed to upload images" });
+      res.status(500).json({ message: "Failed to upload images", error: error.message });
     }
   });
 
-  // Serve uploaded images
-  app.get('/objects/:folder/:filename', async (req, res) => {
-    // For local development, return 404 for object requests
-    if (!process.env.REPL_ID) {
-      console.log(`Local development mode: Object ${req.params.folder}/${req.params.filename} not available`);
-      return res.status(404).json({ message: "Object storage not available in local development" });
-    }
-    
-    try {
-      const { folder, filename } = req.params;
-      const objectPath = `/objects/${folder}/${filename}`;
-      
-      const objectStorageService = new ObjectStorageService();
-      const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
-      
-      await objectStorageService.downloadObject(objectFile, res);
-    } catch (error) {
-      console.error("Error serving image:", error);
-      res.status(404).json({ message: "Image not found" });
-    }
-  });
+  // Object storage routes removed - now using file system uploads directly
 
   // Category routes
   app.get('/api/categories', async (req, res) => {
@@ -377,6 +378,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching categories:", error);
       res.status(500).json({ message: "Failed to fetch categories" });
+    }
+  });
+
+  app.get('/api/categories/high-demand', async (req, res) => {
+    try {
+      const categories = await storage.getHighDemandCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching high demand categories:", error);
+      res.status(500).json({ message: "Failed to fetch high demand categories" });
     }
   });
 
@@ -440,12 +451,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Product routes
   app.get('/api/products', async (req, res) => {
     try {
-      const { categoryId, featured, limit } = req.query;
+      const { categoryId, featured, limit, fitnessLevel } = req.query;
       const options: any = {};
       
       if (categoryId) options.categoryId = categoryId as string;
       if (featured === 'true') options.featured = true;
       if (limit) options.limit = parseInt(limit as string);
+      if (fitnessLevel) options.fitnessLevel = fitnessLevel as string;
 
       const products = await storage.getProducts(options);
       res.json(products);
@@ -515,6 +527,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating product:", error);
       res.status(500).json({ message: "Failed to update product" });
+    }
+  });
+
+  // Product Variant routes
+  app.get('/api/products/:productId/variants', async (req, res) => {
+    try {
+      const variants = await storage.getProductVariants(req.params.productId);
+      res.json(variants);
+    } catch (error) {
+      console.error("Error fetching product variants:", error);
+      res.status(500).json({ message: "Failed to fetch product variants" });
+    }
+  });
+
+  app.get('/api/variants/:id', async (req, res) => {
+    try {
+      const variant = await storage.getVariantById(req.params.id);
+      if (!variant) {
+        return res.status(404).json({ message: "Variant not found" });
+      }
+      res.json(variant);
+    } catch (error) {
+      console.error("Error fetching variant:", error);
+      res.status(500).json({ message: "Failed to fetch variant" });
+    }
+  });
+
+  app.post('/api/products/:productId/variants', authenticateJWT, async (req: any, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const variantData = insertProductVariantSchema.parse({
+        ...req.body,
+        productId: req.params.productId
+      });
+      const variant = await storage.createProductVariant(variantData);
+      res.status(201).json(variant);
+    } catch (error) {
+      console.error("Error creating product variant:", error);
+      res.status(500).json({ message: "Failed to create product variant" });
+    }
+  });
+
+  app.put('/api/variants/:id', authenticateJWT, async (req: any, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const variantData = insertProductVariantSchema.partial().parse(req.body);
+      const variant = await storage.updateProductVariant(req.params.id, variantData);
+      res.json(variant);
+    } catch (error) {
+      console.error("Error updating product variant:", error);
+      res.status(500).json({ message: "Failed to update product variant" });
+    }
+  });
+
+  app.delete('/api/variants/:id', authenticateJWT, async (req: any, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      await storage.deleteProductVariant(req.params.id);
+      res.json({ message: "Product variant deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting product variant:", error);
+      res.status(500).json({ message: "Failed to delete product variant" });
     }
   });
 
@@ -1015,84 +1098,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Object Storage routes for file uploads
-  app.get("/public-objects/:filePath(*)", async (req, res) => {
-    // For local development, return 404 for all public object requests
-    if (!process.env.REPL_ID) {
-      console.log(`Local development mode: Public object ${req.params.filePath} not available`);
-      return res.status(404).json({ error: "Object storage not available in local development" });
-    }
-    
-    const filePath = req.params.filePath;
-    const objectStorageService = new ObjectStorageService();
-    try {
-      const file = await objectStorageService.searchPublicObject(filePath);
-      if (!file) {
-        return res.status(404).json({ error: "File not found" });
-      }
-      objectStorageService.downloadObject(file, res);
-    } catch (error) {
-      console.error("Error searching for public object:", error);
-      return res.status(500).json({ error: "Internal server error" });
-    }
-  });
+  // Public objects route removed - now using file system upload
 
-  app.post("/api/objects/upload", authenticateJWT, async (req: any, res) => {
-    try {
-      if (req.user?.role !== 'admin') {
-        return res.status(403).json({ message: 'Admin access required' });
-      }
+  // Object storage upload route removed - now using file system upload
 
-      // For local development, return placeholder upload URL
-      if (!process.env.REPL_ID) {
-        console.log("Local development mode: Returning placeholder upload URL");
-        return res.json({ uploadURL: `http://localhost:5000/local-upload/placeholder` });
-      }
-
-      const objectStorageService = new ObjectStorageService();
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      res.json({ uploadURL });
-    } catch (error) {
-      console.error('Error getting upload URL:', error);
-      res.status(500).json({ message: 'Failed to get upload URL' });
-    }
-  });
-
-  app.put("/api/banner-images", authenticateJWT, async (req: any, res) => {
-    try {
-      if (req.user?.role !== 'admin') {
-        return res.status(403).json({ message: 'Admin access required' });
-      }
-
-      if (!req.body.bannerImageURL) {
-        return res.status(400).json({ error: "bannerImageURL is required" });
-      }
-
-      // For local development, return the URL as-is
-      if (!process.env.REPL_ID) {
-        console.log("Local development mode: Banner image URL passed through");
-        return res.status(200).json({
-          objectPath: req.body.bannerImageURL,
-        });
-      }
-
-      const userId = req.user.id;
-      const objectStorageService = new ObjectStorageService();
-      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
-        req.body.bannerImageURL,
-        {
-          owner: userId,
-          visibility: "public", // Banner images should be publicly accessible
-        },
-      );
-
-      res.status(200).json({
-        objectPath: objectPath,
-      });
-    } catch (error) {
-      console.error("Error setting banner image:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+  // Banner image route removed - now using file system upload
 
   const httpServer = createServer(app);
   return httpServer;

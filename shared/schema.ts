@@ -63,6 +63,8 @@ export const products = pgTable("products", {
   shortDescription: text("short_description"),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   salePrice: decimal("sale_price", { precision: 10, scale: 2 }),
+  sku: varchar("sku").unique(),
+  stock: integer("stock"),
   categoryId: varchar("category_id").references(() => categories.id),
   fitnessLevel: varchar("fitness_level"), // beginner, intermediate, advanced, professional
   images: jsonb("images").$type<string[]>().default([]),
